@@ -1,0 +1,73 @@
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Body, 
+  Patch, 
+  Param, 
+  Delete, 
+  Query,
+  ParseIntPipe,
+  DefaultValuePipe,
+  HttpCode,
+  HttpStatus
+} from '@nestjs/common';
+import { {{ModuleName}}Service } from './{{moduleName}}.service';
+import { Create{{ModuleName}}Dto } from './dto/create-{{moduleName}}.dto';
+import { Update{{ModuleName}}Dto } from './dto/update-{{moduleName}}.dto';
+
+@Controller('{{module-name}}')
+export class {{ModuleName}}Controller {
+  constructor(private readonly {{camelModuleName}}Service: {{ModuleName}}Service) {}
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  create(@Body() create{{ModuleName}}Dto: Create{{ModuleName}}Dto) {
+    return this.{{camelModuleName}}Service.create(create{{ModuleName}}Dto);
+  }
+
+  @Get()
+  findAll() {
+    return this.{{camelModuleName}}Service.findAll();
+  }
+
+  @Get('count')
+  count(@Query('search') search?: string) {
+    return this.{{camelModuleName}}Service.count(search);
+  }
+
+  @Get('search')
+  searchByName(@Query('name') name: string) {
+    return this.{{camelModuleName}}Service.findByName(name);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.{{camelModuleName}}Service.findOne(id);
+  }
+
+  @Get(':id/exists')
+  exists(@Param('id') id: string) {
+    return this.{{camelModuleName}}Service.exists(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string, 
+    @Body() update{{ModuleName}}Dto: Update{{ModuleName}}Dto
+  ) {
+    return this.{{camelModuleName}}Service.update(id, update{{ModuleName}}Dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  remove(@Param('id') id: string) {
+    return this.{{camelModuleName}}Service.remove(id);
+  }
+
+  @Delete()
+  @HttpCode(HttpStatus.OK)
+  removeMany(@Body('ids') ids: string[]) {
+    return this.{{camelModuleName}}Service.removeMany(ids);
+  }
+}

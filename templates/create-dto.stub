@@ -1,0 +1,9 @@
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+
+export class Create{{ModuleName}}Dto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  // Add more properties as needed
+}
