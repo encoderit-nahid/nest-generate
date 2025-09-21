@@ -4,218 +4,256 @@ const fs = require('fs');
 const path = require('path');
 
 class NestJSGenerator {
-  constructor() {
-    this.config = {
-      templatesDir: './templates',
-      outputDir: './src/modules',
-      templates: {
-        module: { extension: 'module.ts', required: true },
-        controller: { extension: 'controller.ts', required: true },
-        service: { extension: 'service.ts', required: true },
-        'create-dto': {
-          extension: 'dto.ts',
-          required: false,
-          outputPath: 'dto',
-          filename: 'create-{{moduleName}}.dto.ts'
-        },
-        'update-dto': {
-          extension: 'dto.ts',
-          required: false,
-          outputPath: 'dto',
-          filename: 'update-{{moduleName}}.dto.ts'
-        },
-        schema: {
-          extension: 'schema.ts',
-          required: false,
-          outputPath: 'schema',
-          filename: '{{moduleName}}.schema.ts'
+    constructor() {
+        this.config = {
+            templatesDir: './templates',
+            outputDir: './src/modules',
+            templates: {
+                module: { extension: 'module.ts', required: true },
+                controller: { extension: 'controller.ts', required: true },
+                service: { extension: 'service.ts', required: true },
+                'create-dto': {
+                    extension: 'dto.ts',
+                    required: false,
+                    outputPath: 'dto',
+                    filename: 'create-{{singularName}}.dto.ts'
+                },
+                'update-dto': {
+                    extension: 'dto.ts',
+                    required: false,
+                    outputPath: 'dto',
+                    filename: 'update-{{singularName}}.dto.ts'
+                },
+                schema: {
+                    extension: 'schema.ts',
+                    required: false,
+                    outputPath: 'schema',
+                    filename: '{{singularName}}.schema.ts'
+                }
+            },
+            exclusions: {
+                'create-dto': ['auth', 'payments'],
+                'update-dto': ['auth', 'payments'],
+                schema: ['auth', 'sidebar']
+            }
+        };
+    }
+
+    // Utility functions
+    toPascalCase(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    toCamelCase(str) {
+        return str.charAt(0).toLowerCase() + str.slice(1);
+    }
+
+    toKebabCase(str) {
+        return str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+    }
+
+    toSnakeCase(str) {
+        return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+    }
+
+    // Convert plural to singular (basic implementation)
+    toSingular(str) {
+        // Handle common plural patterns
+        if (str.endsWith('ies')) {
+            return str.slice(0, -3) + 'y'; // categories -> category
         }
-      },
-      exclusions: {
-        'create-dto': ['auth', 'payments'],
-        'update-dto': ['auth', 'payments'],
-        schema: ['auth', 'sidebar']
-      }
-    };
-  }
-
-  // Utility functions
-  toPascalCase(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  }
-
-  toCamelCase(str) {
-    return str.charAt(0).toLowerCase() + str.slice(1);
-  }
-
-  toKebabCase(str) {
-    return str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-  }
-
-  toSnakeCase(str) {
-    return str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
-  }
-
-  // Check if a module should be excluded for a specific template
-  shouldExclude(moduleName, templateName) {
-    const excludeList = this.config.exclusions[templateName];
-    return excludeList && excludeList.includes(moduleName);
-  }
-
-  // Get template content and replace placeholders
-  processTemplate(templateName, moduleName) {
-    const templatePath = path.join(this.config.templatesDir, `${templateName}.stub`);
-
-    if (!fs.existsSync(templatePath)) {
-      throw new Error(`Template not found: ${templatePath}`);
+        if (str.endsWith('ves')) {
+            return str.slice(0, -3) + 'f'; // leaves -> leaf
+        }
+        if (str.endsWith('es') && (str.endsWith('ches') || str.endsWith('shes') || str.endsWith('xes'))) {
+            return str.slice(0, -2); // boxes -> box
+        }
+        if (str.endsWith('s') && !str.endsWith('ss')) {
+            return str.slice(0, -1); // users -> user
+        }
+        return str; // already singular or irregular
     }
 
-    let content = fs.readFileSync(templatePath, 'utf-8');
-
-    // Replace all possible naming conventions
-    const replacements = {
-      '{{moduleName}}': moduleName,
-      '{{ModuleName}}': this.toPascalCase(moduleName),
-      '{{module_name}}': this.toSnakeCase(moduleName),
-      '{{module-name}}': this.toKebabCase(moduleName),
-      '{{camelModuleName}}': this.toCamelCase(moduleName),
-      '{{MODULE_NAME}}': moduleName.toUpperCase()
-    };
-
-    Object.entries(replacements).forEach(([placeholder, value]) => {
-      content = content.replace(new RegExp(placeholder, 'g'), value);
-    });
-
-    return content;
-  }
-
-  // Generate a single file
-  generateFile(moduleName, templateName, templateConfig) {
-    if (this.shouldExclude(moduleName, templateName)) {
-      console.log(`  - Skipping ${templateName} (excluded for ${moduleName})`);
-      return;
+    // Check if a module should be excluded for a specific template
+    shouldExclude(moduleName, templateName) {
+        const excludeList = this.config.exclusions[templateName];
+        return excludeList && excludeList.includes(moduleName);
     }
 
-    try {
-      const content = this.processTemplate(templateName, moduleName);
+    // Get template content and replace placeholders
+    processTemplate(templateName, moduleName) {
+        const templatePath = path.join(this.config.templatesDir, `${templateName}.stub`);
 
-      // Determine an output path
-      let outputPath;
-      if (templateConfig.outputPath) {
-        outputPath = path.join(
-          this.config.outputDir,
-          moduleName,
-          templateConfig.outputPath
-        );
-      } else {
-        outputPath = path.join(this.config.outputDir, moduleName);
-      }
+        if (!fs.existsSync(templatePath)) {
+            throw new Error(`Template not found: ${templatePath}`);
+        }
 
-      // Ensure directory exists
-      fs.mkdirSync(outputPath, { recursive: true });
+        let content = fs.readFileSync(templatePath, 'utf-8');
 
-      // Determine filename
-      let filename;
-      if (templateConfig.filename) {
-        filename = templateConfig.filename.replace(/{{moduleName}}/g, moduleName);
-      } else {
-        filename = `${moduleName}.${templateConfig.extension}`;
-      }
+        // Get singular form
+        const singularName = this.toSingular(moduleName);
 
-      const fullPath = path.join(outputPath, filename);
+        // Replace all possible naming conventions
+        const replacements = {
+            '{{moduleName}}': moduleName,
+            '{{ModuleName}}': this.toPascalCase(moduleName),
+            '{{module_name}}': this.toSnakeCase(moduleName),
+            '{{module-name}}': this.toKebabCase(moduleName),
+            '{{camelModuleName}}': this.toCamelCase(moduleName),
+            '{{MODULE_NAME}}': moduleName.toUpperCase(),
+            // Singular versions
+            '{{singularName}}': singularName,
+            '{{SingularName}}': this.toPascalCase(singularName),
+            '{{singular_name}}': this.toSnakeCase(singularName),
+            '{{singular-name}}': this.toKebabCase(singularName),
+            '{{camelSingularName}}': this.toCamelCase(singularName),
+            '{{SINGULAR_NAME}}': singularName.toUpperCase()
+        };
 
-      // Check if a file already exists
-      if (fs.existsSync(fullPath)) {
-        console.log(`  - Skipping ${templateName} (${fullPath} already exists)`);
-        return;
-      }
+        Object.entries(replacements).forEach(([placeholder, value]) => {
+            content = content.replace(new RegExp(placeholder, 'g'), value);
+        });
 
-      // Write file
-      fs.writeFileSync(fullPath, content, 'utf-8');
-      console.log(`  - Generated: ${fullPath}`);
-
-    } catch (error) {
-      console.error(`  - Error generating ${templateName}: ${error.message}`);
-    }
-  }
-
-  // Generate all files for a module
-  generateModule(moduleName) {
-    console.log(`\nGenerating module: ${moduleName}`);
-
-    Object.entries(this.config.templates).forEach(([templateName, templateConfig]) => {
-      this.generateFile(moduleName, templateName, templateConfig);
-    });
-  }
-
-  // Generate multiple modules
-  generateModules(moduleNames) {
-    if (!Array.isArray(moduleNames)) {
-      moduleNames = [moduleNames];
+        return content;
     }
 
-    // Validate templates directory
-    if (!fs.existsSync(this.config.templatesDir)) {
-      console.error(`Templates directory not found: ${this.config.templatesDir}`);
-      process.exit(1);
+    // Generate a single file
+    generateFile(moduleName, templateName, templateConfig) {
+        if (this.shouldExclude(moduleName, templateName)) {
+            console.log(`  - Skipping ${templateName} (excluded for ${moduleName})`);
+            return;
+        }
+
+        try {
+            const content = this.processTemplate(templateName, moduleName);
+
+            // Determine an output path
+            let outputPath;
+            if (templateConfig.outputPath) {
+                outputPath = path.join(
+                    this.config.outputDir,
+                    moduleName,
+                    templateConfig.outputPath
+                );
+            } else {
+                outputPath = path.join(this.config.outputDir, moduleName);
+            }
+
+            // Ensure directory exists
+            fs.mkdirSync(outputPath, { recursive: true });
+
+            // Determine filename
+            let filename;
+            if (templateConfig.filename) {
+                const singularName = this.toSingular(moduleName);
+                filename = templateConfig.filename
+                    .replace(/{{moduleName}}/g, moduleName)
+                    .replace(/{{singularName}}/g, singularName);
+            } else {
+                filename = `${moduleName}.${templateConfig.extension}`;
+            }
+
+            const fullPath = path.join(outputPath, filename);
+
+            // Check if a file already exists
+            if (fs.existsSync(fullPath)) {
+                console.log(`  - Skipping ${templateName} (${fullPath} already exists)`);
+                return;
+            }
+
+            // Write file
+            fs.writeFileSync(fullPath, content, 'utf-8');
+            console.log(`  - Generated: ${fullPath}`);
+
+        } catch (error) {
+            console.error(`  - Error generating ${templateName}: ${error.message}`);
+        }
     }
 
-    moduleNames.forEach(moduleName => {
-      this.generateModule(moduleName);
-    });
-  }
+    // Generate all files for a module
+    generateModule(moduleName) {
+        console.log(`\nGenerating module: ${moduleName}`);
 
-  // Load configuration from a file if exists
-  loadConfig(configPath = './generator.config.js') {
-    if (fs.existsSync(configPath)) {
-      try {
-        const userConfig = require(path.resolve(configPath));
-        this.config = { ...this.config, ...userConfig };
-        console.log(`Loaded configuration from: ${configPath}`);
-      } catch (error) {
-        console.warn(`Warning: Could not load config file: ${error.message}`);
-      }
-    }
-  }
-
-  // Initialize templates directory with default stubs
-  initTemplates() {
-    const templatesDir = this.config.templatesDir;
-
-    if (!fs.existsSync(templatesDir)) {
-      fs.mkdirSync(templatesDir, { recursive: true });
-      console.log(`Created templates directory: ${templatesDir}`);
+        Object.entries(this.config.templates).forEach(([templateName, templateConfig]) => {
+            this.generateFile(moduleName, templateName, templateConfig);
+        });
     }
 
-    const defaultTemplates = {
-      'module.stub': `import { Module } from '@nestjs/common';
+    // Generate multiple modules
+    generateModules(moduleNames) {
+        if (!Array.isArray(moduleNames)) {
+            moduleNames = [moduleNames];
+        }
+
+        // Validate templates directory
+        if (!fs.existsSync(this.config.templatesDir)) {
+            console.error(`Templates directory not found: ${this.config.templatesDir}`);
+            process.exit(1);
+        }
+
+        moduleNames.forEach(moduleName => {
+            this.generateModule(moduleName);
+        });
+    }
+
+    // Load configuration from a file if exists
+    loadConfig(configPath = './generator.config.js') {
+        if (fs.existsSync(configPath)) {
+            try {
+                const userConfig = require(path.resolve(configPath));
+                this.config = { ...this.config, ...userConfig };
+                console.log(`Loaded configuration from: ${configPath}`);
+            } catch (error) {
+                console.warn(`Warning: Could not load config file: ${error.message}`);
+            }
+        }
+    }
+
+    // Initialize templates directory with default stubs
+    initTemplates() {
+        const templatesDir = this.config.templatesDir;
+
+        if (!fs.existsSync(templatesDir)) {
+            fs.mkdirSync(templatesDir, { recursive: true });
+            console.log(`Created templates directory: ${templatesDir}`);
+        }
+
+        const defaultTemplates = {
+            'module.stub': `import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
 import { {{ModuleName}}Controller } from './{{moduleName}}.controller';
 import { {{ModuleName}}Service } from './{{moduleName}}.service';
+import { {{SingularName}}, {{SingularName}}Schema } from './schema/{{singularName}}.schema';
 
 @Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: {{SingularName}}.name, schema: {{SingularName}}Schema }
+    ]),
+  ],
   controllers: [{{ModuleName}}Controller],
   providers: [{{ModuleName}}Service],
   exports: [{{ModuleName}}Service],
 })
 export class {{ModuleName}}Module {}`,
 
-      'controller.stub': `import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
+            'controller.stub': `import { 
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
   Query,
   ParseIntPipe,
   DefaultValuePipe,
   HttpCode,
-  HttpStatus
+  HttpStatus,
 } from '@nestjs/common';
 import { {{ModuleName}}Service } from './{{moduleName}}.service';
-import { Create{{ModuleName}}Dto } from './dto/create-{{moduleName}}.dto';
-import { Update{{ModuleName}}Dto } from './dto/update-{{moduleName}}.dto';
+import { Create{{SingularName}}Dto } from './dto/create-{{singularName}}.dto';
+import { Update{{SingularName}}Dto } from './dto/update-{{singularName}}.dto';
 
 @Controller('{{module-name}}')
 export class {{ModuleName}}Controller {
@@ -223,8 +261,8 @@ export class {{ModuleName}}Controller {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() create{{ModuleName}}Dto: Create{{ModuleName}}Dto) {
-    return this.{{camelModuleName}}Service.create(create{{ModuleName}}Dto);
+  create(@Body() create{{SingularName}}Dto: Create{{SingularName}}Dto) {
+    return this.{{camelModuleName}}Service.create(create{{SingularName}}Dto);
   }
 
   @Get()
@@ -254,10 +292,10 @@ export class {{ModuleName}}Controller {
 
   @Patch(':id')
   update(
-    @Param('id') id: string, 
-    @Body() update{{ModuleName}}Dto: Update{{ModuleName}}Dto
+    @Param('id') id: string,
+    @Body() update{{SingularName}}Dto: Update{{SingularName}}Dto,
   ) {
-    return this.{{camelModuleName}}Service.update(id, update{{ModuleName}}Dto);
+    return this.{{camelModuleName}}Service.update(id, update{{SingularName}}Dto);
   }
 
   @Delete(':id')
@@ -273,69 +311,68 @@ export class {{ModuleName}}Controller {
   }
 }`,
 
-      'service.stub': `import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+            'service.stub': `import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Create{{ModuleName}}Dto } from './dto/create-{{moduleName}}.dto';
-import { Update{{ModuleName}}Dto } from './dto/update-{{moduleName}}.dto';
-import { {{ModuleName}}, {{ModuleName}}Document } from './schema/{{moduleName}}.schema';
+import { Create{{SingularName}}Dto } from './dto/create-{{singularName}}.dto';
+import { Update{{SingularName}}Dto } from './dto/update-{{singularName}}.dto';
+import { {{SingularName}}, {{SingularName}}Document } from './schema/{{singularName}}.schema';
 
 @Injectable()
 export class {{ModuleName}}Service {
   constructor(
-    @InjectModel({{ModuleName}}.name) 
-    private readonly {{camelModuleName}}Model: Model<{{ModuleName}}Document>,
+    @InjectModel({{SingularName}}.name) 
+    private readonly {{camelSingularName}}Model: Model<{{SingularName}}Document>,
   ) {}
   
-  async create(create{{ModuleName}}Dto: Create{{ModuleName}}Dto): Promise<{{ModuleName}}> {
+  async create(create{{SingularName}}Dto: Create{{SingularName}}Dto): Promise<{{SingularName}}> {
     try {
-      const created{{ModuleName}} = new this.{{camelModuleName}}Model(create{{ModuleName}}Dto);
-      return await created{{ModuleName}}.save();
+      const created{{SingularName}} = new this.{{camelSingularName}}Model(create{{SingularName}}Dto);
+      return await created{{SingularName}}.save();
     } catch (error) {
-      throw new BadRequestException(\`Failed to create {{moduleName}}: \${error.message}\`);
+      throw new BadRequestException(\`Failed to create {{singularName}}: \${error.message}\`);
     }
   }
   
-  async findAll(): Promise<{{ModuleName}}[]> {
-    return this.{{camelModuleName}}Model.find().lean().exec();
+  async findAll(): Promise<{{SingularName}}[]> {
+    return this.{{camelSingularName}}Model.find().lean().exec();
   }
 
-
-  async findOne(id: string): Promise<{{ModuleName}}> {
+  async findOne(id: string): Promise<{{SingularName}}> {
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       throw new BadRequestException('Invalid ID format');
     }
 
-    const {{camelModuleName}} = await this.{{camelModuleName}}Model.findById(id).exec();
-    if (!{{camelModuleName}}) {
-      throw new NotFoundException(\`{{ModuleName}} with ID \${id} not found\`);
+    const {{camelSingularName}} = await this.{{camelSingularName}}Model.findById(id).exec();
+    if (!{{camelSingularName}}) {
+      throw new NotFoundException(\`{{SingularName}} with ID \${id} not found\`);
     }
-    return {{camelModuleName}};
+    return {{camelSingularName}};
   }
 
-  async findByName(name: string): Promise<{{ModuleName}}[]> {
-    return this.{{camelModuleName}}Model
+  async findByName(name: string): Promise<{{SingularName}}[]> {
+    return this.{{camelSingularName}}Model
       .find({ name: { $regex: name, $options: 'i' } })
       .exec();
   }
 
-  async update(id: string, update{{ModuleName}}Dto: Update{{ModuleName}}Dto): Promise<{{ModuleName}}> {
+  async update(id: string, update{{SingularName}}Dto: Update{{SingularName}}Dto): Promise<{{SingularName}}> {
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       throw new BadRequestException('Invalid ID format');
     }
 
-    const updated{{ModuleName}} = await this.{{camelModuleName}}Model
-      .findByIdAndUpdate(id, update{{ModuleName}}Dto, {
+    const updated{{SingularName}} = await this.{{camelSingularName}}Model
+      .findByIdAndUpdate(id, update{{SingularName}}Dto, {
         new: true,
         runValidators: true,
       })
       .exec();
 
-    if (!updated{{ModuleName}}) {
-      throw new NotFoundException(\`{{ModuleName}} with ID \${id} not found\`);
+    if (!updated{{SingularName}}) {
+      throw new NotFoundException(\`{{SingularName}} with ID \${id} not found\`);
     }
 
-    return updated{{ModuleName}};
+    return updated{{SingularName}};
   }
 
   async remove(id: string): Promise<{ message: string; deletedId: string }> {
@@ -343,16 +380,16 @@ export class {{ModuleName}}Service {
       throw new BadRequestException('Invalid ID format');
     }
 
-    const deleted{{ModuleName}} = await this.{{camelModuleName}}Model
+    const deleted{{SingularName}} = await this.{{camelSingularName}}Model
       .findByIdAndDelete(id)
       .exec();
 
-    if (!deleted{{ModuleName}}) {
-      throw new NotFoundException(\`{{ModuleName}} with ID \${id} not found\`);
+    if (!deleted{{SingularName}}) {
+      throw new NotFoundException(\`{{SingularName}} with ID \${id} not found\`);
     }
 
     return {
-      message: \`{{ModuleName}} with ID \${id} has been successfully deleted\`,
+      message: \`{{SingularName}} with ID \${id} has been successfully deleted\`,
       deletedId: id,
     };
   }
@@ -364,12 +401,12 @@ export class {{ModuleName}}Service {
       throw new BadRequestException('Some IDs have invalid format');
     }
 
-    const result = await this.{{camelModuleName}}Model
+    const result = await this.{{camelSingularName}}Model
       .deleteMany({ _id: { $in: validIds } })
       .exec();
 
     return {
-      message: \`Successfully deleted \${result.deletedCount} {{moduleName}}(s)\`,
+      message: \`Successfully deleted \${result.deletedCount} {{singularName}}(s)\`,
       deletedCount: result.deletedCount,
     };
   }
@@ -384,21 +421,21 @@ export class {{ModuleName}}Service {
         ],
       };
     }
-    return this.{{camelModuleName}}Model.countDocuments(query).exec();
+    return this.{{camelSingularName}}Model.countDocuments(query).exec();
   }
 
   async exists(id: string): Promise<boolean> {
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return false;
     }
-    const count = await this.{{camelModuleName}}Model.countDocuments({ _id: id }).exec();
+    const count = await this.{{camelSingularName}}Model.countDocuments({ _id: id }).exec();
     return count > 0;
   }
 }`,
 
-      'create-dto.stub': `import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+            'create-dto.stub': `import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
-export class Create{{ModuleName}}Dto {
+export class Create{{SingularName}}Dto {
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -406,42 +443,49 @@ export class Create{{ModuleName}}Dto {
   // Add more properties as needed
 }`,
 
-      'update-dto.stub': `import { PartialType } from '@nestjs/mapped-types';
-import { Create{{ModuleName}}Dto } from './create-{{moduleName}}.dto';
+            'update-dto.stub': `import { PartialType } from '@nestjs/mapped-types';
+import { Create{{SingularName}}Dto } from './create-{{singularName}}.dto';
 
-export class Update{{ModuleName}}Dto extends PartialType(Create{{ModuleName}}Dto) {}`,
+export class Update{{SingularName}}Dto extends PartialType(Create{{SingularName}}Dto) {}`,
 
-      'schema.stub': `import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+            'schema.stub': `import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Types } from 'mongoose';
 
-export type {{ModuleName}}Document = {{ModuleName}} & Document;
+export type {{SingularName}}Document = {{SingularName}} & Document;
 
-@Schema({ 
+@Schema({
   timestamps: true,
-  collection: '{{module-name}}'
+  collection: '{{module-name}}',
 })
-export class {{ModuleName}} {
-  @Prop({ required: true })
+export class {{SingularName}} {
+  _id: Types.ObjectId;
+
+  @Prop({
+    required: true,
+    trim: true,
+    maxlength: 100,
+    unique: true,
+  })
   name: string;
 
   // Add more fields as needed
 }
 
-export const {{ModuleName}}Schema = SchemaFactory.createForClass({{ModuleName}});`
-    };
+export const {{SingularName}}Schema = SchemaFactory.createForClass({{SingularName}});`
+        };
 
-    Object.entries(defaultTemplates).forEach(([filename, content]) => {
-      const filePath = path.join(templatesDir, filename);
-      if (!fs.existsSync(filePath)) {
-        fs.writeFileSync(filePath, content);
-        console.log(`Created template: ${filePath}`);
-      }
-    });
-  }
+        Object.entries(defaultTemplates).forEach(([filename, content]) => {
+            const filePath = path.join(templatesDir, filename);
+            if (!fs.existsSync(filePath)) {
+                fs.writeFileSync(filePath, content);
+                console.log(`Created template: ${filePath}`);
+            }
+        });
+    }
 
-  // Show help
-  showHelp() {
-    console.log(`
+    // Show help
+    showHelp() {
+        console.log(`
 NestJS Module Generator
 
 Usage:
@@ -462,46 +506,56 @@ Examples:
 Configuration:
   Create a 'generator.config.js' file to customize templates, exclusions, and paths.
     `);
-  }
+    }
 }
 
 // CLI Interface
 function main() {
-  const generator = new NestJSGenerator();
-  const args = process.argv.slice(2);
-  const command = args[0];
+    const generator = new NestJSGenerator();
+    const args = process.argv.slice(2);
+    const command = args[0];
 
-  // Load configuration if exists
-  generator.loadConfig();
+    // Load configuration if exists
+    generator.loadConfig();
 
-  switch (command) {
-    case 'init':
-      generator.initTemplates();
-      break;
+    switch (command) {
+        case 'init':
+            generator.initTemplates();
+            break;
 
-    case 'generate':
-      if (args.length < 2) {
-        console.error('Error: Please provide module name(s)');
-        generator.showHelp();
-        process.exit(1);
-      }
-      generator.generateModules(args.slice(1));
-      break;
+        case 'generate':
+            if (args.length < 2) {
+                console.error('Error: Please provide module name(s)');
+                generator.showHelp();
+                process.exit(1);
+            }
+            generator.generateModules(args.slice(1));
+            break;
 
-    case 'batch':
-      // Predefined modules list (can be moved to config)
-      const modules = [
-        'auth', 'users', 'products', 'brands', 'categories',
-        'orders', 'carts', 'payments', 'discounts', 'inventory', 'sidebar'
-      ];
-      generator.generateModules(modules);
-      break;
+        case 'batch':
+            // Use batchModules from config if available, otherwise use default
+            const modules = generator.config.batchModules || [
+                'users',
+                'user_preferences',
+                'articles',
+                'checklists',
+                'categories',
+                'tags',
+                'comments',
+                'questions',
+                'answers',
+                'testimonials',
+                // 'roles',
+                // 'permissions',
+            ];
+            generator.generateModules(modules);
+            break;
 
-    case 'help':
-    default:
-      generator.showHelp();
-      break;
-  }
+        case 'help':
+        default:
+            generator.showHelp();
+            break;
+    }
 }
 
 // Export for use as a module
@@ -509,5 +563,5 @@ module.exports = NestJSGenerator;
 
 // Run if called directly
 if (require.main === module) {
-  main();
+    main();
 }

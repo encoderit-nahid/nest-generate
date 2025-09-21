@@ -1,8 +1,15 @@
 import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
 import { {{ModuleName}}Controller } from './{{moduleName}}.controller';
 import { {{ModuleName}}Service } from './{{moduleName}}.service';
+import { {{SingularName}}, {{SingularName}}Schema } from './schema/{{singularName}}.schema';
 
 @Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: {{SingularName}}.name, schema: {{SingularName}}Schema }
+    ]),
+  ],
   controllers: [{{ModuleName}}Controller],
   providers: [{{ModuleName}}Service],
   exports: [{{ModuleName}}Service],

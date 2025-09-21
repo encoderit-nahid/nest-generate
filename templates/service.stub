@@ -1,66 +1,65 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Create{{ModuleName}}Dto } from './dto/create-{{moduleName}}.dto';
-import { Update{{ModuleName}}Dto } from './dto/update-{{moduleName}}.dto';
-import { {{ModuleName}}, {{ModuleName}}Document } from './schema/{{moduleName}}.schema';
+import { Create{{SingularName}}Dto } from './dto/create-{{singularName}}.dto';
+import { Update{{SingularName}}Dto } from './dto/update-{{singularName}}.dto';
+import { {{SingularName}}, {{SingularName}}Document } from './schema/{{singularName}}.schema';
 
 @Injectable()
 export class {{ModuleName}}Service {
   constructor(
-    @InjectModel({{ModuleName}}.name) 
-    private readonly {{camelModuleName}}Model: Model<{{ModuleName}}Document>,
+    @InjectModel({{SingularName}}.name) 
+    private readonly {{camelSingularName}}Model: Model<{{SingularName}}Document>,
   ) {}
   
-  async create(create{{ModuleName}}Dto: Create{{ModuleName}}Dto): Promise<{{ModuleName}}> {
+  async create(create{{SingularName}}Dto: Create{{SingularName}}Dto): Promise<{{SingularName}}> {
     try {
-      const created{{ModuleName}} = new this.{{camelModuleName}}Model(create{{ModuleName}}Dto);
-      return await created{{ModuleName}}.save();
+      const created{{SingularName}} = new this.{{camelSingularName}}Model(create{{SingularName}}Dto);
+      return await created{{SingularName}}.save();
     } catch (error) {
-      throw new BadRequestException(`Failed to create {{moduleName}}: ${error.message}`);
+      throw new BadRequestException(`Failed to create {{singularName}}: ${error.message}`);
     }
   }
   
-  async findAll(): Promise<{{ModuleName}}[]> {
-    return this.{{camelModuleName}}Model.find().lean().exec();
+  async findAll(): Promise<{{SingularName}}[]> {
+    return this.{{camelSingularName}}Model.find().lean().exec();
   }
 
-
-  async findOne(id: string): Promise<{{ModuleName}}> {
+  async findOne(id: string): Promise<{{SingularName}}> {
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       throw new BadRequestException('Invalid ID format');
     }
 
-    const {{camelModuleName}} = await this.{{camelModuleName}}Model.findById(id).exec();
-    if (!{{camelModuleName}}) {
-      throw new NotFoundException(`{{ModuleName}} with ID ${id} not found`);
+    const {{camelSingularName}} = await this.{{camelSingularName}}Model.findById(id).exec();
+    if (!{{camelSingularName}}) {
+      throw new NotFoundException(`{{SingularName}} with ID ${id} not found`);
     }
-    return {{camelModuleName}};
+    return {{camelSingularName}};
   }
 
-  async findByName(name: string): Promise<{{ModuleName}}[]> {
-    return this.{{camelModuleName}}Model
+  async findByName(name: string): Promise<{{SingularName}}[]> {
+    return this.{{camelSingularName}}Model
       .find({ name: { $regex: name, $options: 'i' } })
       .exec();
   }
 
-  async update(id: string, update{{ModuleName}}Dto: Update{{ModuleName}}Dto): Promise<{{ModuleName}}> {
+  async update(id: string, update{{SingularName}}Dto: Update{{SingularName}}Dto): Promise<{{SingularName}}> {
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       throw new BadRequestException('Invalid ID format');
     }
 
-    const updated{{ModuleName}} = await this.{{camelModuleName}}Model
-      .findByIdAndUpdate(id, update{{ModuleName}}Dto, {
+    const updated{{SingularName}} = await this.{{camelSingularName}}Model
+      .findByIdAndUpdate(id, update{{SingularName}}Dto, {
         new: true,
         runValidators: true,
       })
       .exec();
 
-    if (!updated{{ModuleName}}) {
-      throw new NotFoundException(`{{ModuleName}} with ID ${id} not found`);
+    if (!updated{{SingularName}}) {
+      throw new NotFoundException(`{{SingularName}} with ID ${id} not found`);
     }
 
-    return updated{{ModuleName}};
+    return updated{{SingularName}};
   }
 
   async remove(id: string): Promise<{ message: string; deletedId: string }> {
@@ -68,16 +67,16 @@ export class {{ModuleName}}Service {
       throw new BadRequestException('Invalid ID format');
     }
 
-    const deleted{{ModuleName}} = await this.{{camelModuleName}}Model
+    const deleted{{SingularName}} = await this.{{camelSingularName}}Model
       .findByIdAndDelete(id)
       .exec();
 
-    if (!deleted{{ModuleName}}) {
-      throw new NotFoundException(`{{ModuleName}} with ID ${id} not found`);
+    if (!deleted{{SingularName}}) {
+      throw new NotFoundException(`{{SingularName}} with ID ${id} not found`);
     }
 
     return {
-      message: `{{ModuleName}} with ID ${id} has been successfully deleted`,
+      message: `{{SingularName}} with ID ${id} has been successfully deleted`,
       deletedId: id,
     };
   }
@@ -89,12 +88,12 @@ export class {{ModuleName}}Service {
       throw new BadRequestException('Some IDs have invalid format');
     }
 
-    const result = await this.{{camelModuleName}}Model
+    const result = await this.{{camelSingularName}}Model
       .deleteMany({ _id: { $in: validIds } })
       .exec();
 
     return {
-      message: `Successfully deleted ${result.deletedCount} {{moduleName}}(s)`,
+      message: `Successfully deleted ${result.deletedCount} {{singularName}}(s)`,
       deletedCount: result.deletedCount,
     };
   }
@@ -109,14 +108,14 @@ export class {{ModuleName}}Service {
         ],
       };
     }
-    return this.{{camelModuleName}}Model.countDocuments(query).exec();
+    return this.{{camelSingularName}}Model.countDocuments(query).exec();
   }
 
   async exists(id: string): Promise<boolean> {
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return false;
     }
-    const count = await this.{{camelModuleName}}Model.countDocuments({ _id: id }).exec();
+    const count = await this.{{camelSingularName}}Model.countDocuments({ _id: id }).exec();
     return count > 0;
   }
 }

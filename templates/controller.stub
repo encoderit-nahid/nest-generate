@@ -1,20 +1,20 @@
 import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
   Query,
   ParseIntPipe,
   DefaultValuePipe,
   HttpCode,
-  HttpStatus
+  HttpStatus,
 } from '@nestjs/common';
 import { {{ModuleName}}Service } from './{{moduleName}}.service';
-import { Create{{ModuleName}}Dto } from './dto/create-{{moduleName}}.dto';
-import { Update{{ModuleName}}Dto } from './dto/update-{{moduleName}}.dto';
+import { Create{{SingularName}}Dto } from './dto/create-{{singularName}}.dto';
+import { Update{{SingularName}}Dto } from './dto/update-{{singularName}}.dto';
 
 @Controller('{{module-name}}')
 export class {{ModuleName}}Controller {
@@ -22,8 +22,8 @@ export class {{ModuleName}}Controller {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() create{{ModuleName}}Dto: Create{{ModuleName}}Dto) {
-    return this.{{camelModuleName}}Service.create(create{{ModuleName}}Dto);
+  create(@Body() create{{SingularName}}Dto: Create{{SingularName}}Dto) {
+    return this.{{camelModuleName}}Service.create(create{{SingularName}}Dto);
   }
 
   @Get()
@@ -53,10 +53,10 @@ export class {{ModuleName}}Controller {
 
   @Patch(':id')
   update(
-    @Param('id') id: string, 
-    @Body() update{{ModuleName}}Dto: Update{{ModuleName}}Dto
+    @Param('id') id: string,
+    @Body() update{{SingularName}}Dto: Update{{SingularName}}Dto,
   ) {
-    return this.{{camelModuleName}}Service.update(id, update{{ModuleName}}Dto);
+    return this.{{camelModuleName}}Service.update(id, update{{SingularName}}Dto);
   }
 
   @Delete(':id')
